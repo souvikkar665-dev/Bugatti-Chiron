@@ -21,10 +21,10 @@ export const Navbar: React.FC = () => {
         </Link>
         
         <div className="hidden lg:flex gap-12 font-jetbrains text-[8px] uppercase tracking-[0.5em] text-white/30">
-          <Link href="/heritage" className="hover:text-white transition-colors">Heritage</Link>
-          <Link href="/engineering" className="hover:text-white transition-colors">Engineering</Link>
-          <Link href="/sustainability" className="hover:text-white transition-colors">Sustainability</Link>
-          <Link href="/support" className="hover:text-white transition-colors">Support</Link>
+          <Link href="/heritage" prefetch={true} className="hover:text-white transition-colors">Heritage</Link>
+          <Link href="/engineering" prefetch={true} className="hover:text-white transition-colors">Engineering</Link>
+          <Link href="/sustainability" prefetch={true} className="hover:text-white transition-colors">Sustainability</Link>
+          <Link href="/support" prefetch={true} className="hover:text-white transition-colors">Support</Link>
         </div>
       </div>
 

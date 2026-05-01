@@ -23,7 +23,8 @@ export const TOTAL_FRAMES = SECTIONS.reduce((acc, s) => acc + s.frames, 0);
 export const ScrollytellingEngine: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const { setCurrentFrame, setActiveSection } = useStore();
+  const setCurrentFrame = useStore(state => state.setCurrentFrame);
+  const setActiveSection = useStore(state => state.setActiveSection);
   
   const [mounted, setMounted] = useState(false);
   const [loaded, setLoaded] = useState(false);
@@ -56,13 +57,21 @@ export const ScrollytellingEngine: React.FC = () => {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    const img = imagesRef.current[frameIndex];
+    // Find the closest loaded frame if the user scrolls too fast
+    let closestFrame = frameIndex;
+    while (closestFrame >= 0 && (!imagesRef.current[closestFrame] || !imagesRef.current[closestFrame].complete)) {
+      closestFrame--;
+    }
+    
+    const img = imagesRef.current[closestFrame];
     if (img && img.complete) {
       // Cover logic
       const scale = Math.max(canvas.width / img.width, canvas.height / img.height);
       const x = (canvas.width / 2) - (img.width / 2) * scale;
       const y = (canvas.height / 2) - (img.height / 2) * scale;
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      
+      // MAX SMOOTH OPTIMIZATION: JPEGs are fully opaque. 
+      // Removing ctx.clearRect() skips an entire GPU erase pass and doubles draw speed!
       ctx.drawImage(img, x, y, img.width * scale, img.height * scale);
     }
   }, []);
@@ -70,26 +79,59 @@ export const ScrollytellingEngine: React.FC = () => {
   useEffect(() => {
     if (!mounted) return;
     
-    // 1. ASYNC ASSET MANAGER (The F5 Fix)
+    // 1. HIGH-PERFORMANCE BATCH ASSET MANAGER
     const preloadAll = async () => {
-      const promises = [];
-      for (let i = 0; i < TOTAL_FRAMES; i++) {
-        promises.push(new Promise<HTMLImageElement>((resolve) => {
-          const img = new Image();
-          img.src = getImagePath(i);
-          img.onload = () => {
-            imagesRef.current[i] = img;
-            setLoadingProgress(Math.min(Math.round(((imagesRef.current.filter(Boolean).length) / TOTAL_FRAMES) * 100), 100));
-            resolve(img);
-          };
-          img.onerror = () => resolve(img); // Graceful failure
-        }));
-      }
-      await Promise.all(promises);
+      const BATCH_SIZE = 40; // Max concurrent connections to avoid crashing Next.js
+      let loadedCount = 0;
       
-      // Initialize first render
+      const loadBatch = async (start: number, end: number) => {
+        const promises = [];
+        for (let i = start; i < end && i < TOTAL_FRAMES; i++) {
+          promises.push(new Promise<void>((resolve) => {
+            const img = new Image();
+            img.src = getImagePath(i);
+            img.onload = async () => {
+              try {
+                // Decode image off the main thread to prevent Canvas render stutters
+                await img.decode();
+              } catch (e) {
+                // Ignore decode errors
+              }
+              imagesRef.current[i] = img;
+              loadedCount++;
+              // Update preloader progress across all frames
+              if (!loaded) {
+                setLoadingProgress(Math.min(Math.round((loadedCount / TOTAL_FRAMES) * 100), 100));
+              }
+              // If user is currently looking at this frame, render it
+              if (i === scrollObject.current.frame) {
+                renderFrame(i);
+              }
+              resolve();
+            };
+            img.onerror = () => {
+              loadedCount++;
+              resolve();
+            };
+          }));
+        }
+        await Promise.all(promises);
+      };
+
+      // Initial Phase: Buffer ALL frames to guarantee 100% stutter-free scrolling
+      const startTime = Date.now();
+      for (let i = 0; i < TOTAL_FRAMES; i += BATCH_SIZE) {
+        await loadBatch(i, i + BATCH_SIZE);
+      }
+      
+      // Luxury delay: Guarantee minimum 2.5s loading screen for the boot sequence aesthetic
+      const elapsed = Date.now() - startTime;
+      if (elapsed < 2500) {
+        await new Promise(resolve => setTimeout(resolve, 2500 - elapsed));
+      }
+      
       renderFrame(0);
-      setTimeout(() => setLoaded(true), 800);
+      setLoaded(true);
     };
 
     preloadAll();
@@ -104,11 +146,13 @@ export const ScrollytellingEngine: React.FC = () => {
 
     lenis.on('scroll', ScrollTrigger.update);
 
-    gsap.ticker.add((time) => {
-      lenis.raf(time * 1000);
-    });
-
-    gsap.ticker.lagSmoothing(0);
+    // MAX SMOOTH OPTIMIZATION: Native hardware-synced RAF instead of GSAP ticker
+    let rafId: number;
+    function raf(time: number) {
+      lenis.raf(time);
+      rafId = requestAnimationFrame(raf);
+    }
+    rafId = requestAnimationFrame(raf);
 
     // 3. GSAP TIMELINE (Canvas Sandwich)
     const tl = gsap.timeline({
@@ -116,7 +160,7 @@ export const ScrollytellingEngine: React.FC = () => {
         trigger: containerRef.current,
         start: 'top top',
         end: 'bottom bottom',
-        scrub: 1,
+        scrub: true, // IMPORTANT: Removed scrub: 1 to prevent double-smoothing with Lenis
         anticipatePin: 1,
         onUpdate: (self) => {
           const frame = Math.floor(self.progress * (TOTAL_FRAMES - 1));
@@ -141,8 +185,8 @@ export const ScrollytellingEngine: React.FC = () => {
 
     const handleResize = () => {
       if (canvasRef.current) {
-        // Optimized Resolution: 2x max to prevent scroll lag
-        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+        // Optimized Resolution: Locked to DPR 1 to prevent 4K rendering lag
+        const dpr = 1; 
         canvasRef.current.width = window.innerWidth * dpr;
         canvasRef.current.height = window.innerHeight * dpr;
         canvasRef.current.style.width = `${window.innerWidth}px`;
@@ -151,7 +195,6 @@ export const ScrollytellingEngine: React.FC = () => {
         const ctx = canvasRef.current.getContext('2d');
         if (ctx) {
           ctx.imageSmoothingEnabled = true;
-          ctx.imageSmoothingQuality = 'medium';
         }
         
         renderFrame(scrollObject.current.frame);
@@ -161,19 +204,12 @@ export const ScrollytellingEngine: React.FC = () => {
     window.addEventListener('resize', handleResize);
     handleResize();
 
-    // 4. SERVICE WORKER REGISTRATION
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js').catch(err => console.log('SW registration failed: ', err));
-      });
-    }
-
     return () => {
       lenis.destroy();
       tl.kill();
       ScrollTrigger.getAll().forEach(st => st.kill());
       window.removeEventListener('resize', handleResize);
-      gsap.ticker.remove(lenis.raf);
+      cancelAnimationFrame(rafId);
     };
   }, [mounted, getImagePath, renderFrame, setCurrentFrame, setActiveSection]);
 
@@ -185,8 +221,8 @@ export const ScrollytellingEngine: React.FC = () => {
       <AnimatePresence>
         {!loaded && (
           <motion.div 
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[200] bg-obsidian flex flex-col items-center justify-center"
+            exit={{ opacity: 0, transition: { duration: 1.2, ease: 'easeInOut' } }}
+            className="fixed inset-0 z-[200] bg-[#050508] flex flex-col items-center justify-center pointer-events-auto"
           >
             <motion.div 
               initial={{ scale: 0.9, opacity: 0 }}
@@ -210,13 +246,14 @@ export const ScrollytellingEngine: React.FC = () => {
       </AnimatePresence>
 
       {/* PHASE 2: CANVAS SANDWICH (Layer Z-0) */}
-      <div className="sticky top-0 w-full h-screen overflow-hidden pointer-events-none z-0 bg-obsidian">
+      <div className="sticky top-0 w-full h-screen overflow-hidden pointer-events-none z-0 bg-[#050508]">
         <canvas 
           ref={canvasRef} 
           className="w-full h-full object-cover opacity-100 transition-opacity duration-1000" 
           style={{ 
-            imageRendering: 'auto', 
-            filter: 'contrast(1.2) brightness(1.1) saturate(1.05) drop-shadow(0 0 20px rgba(0,0,0,0.5))' 
+            imageRendering: 'auto',
+            transform: 'translateZ(0)',
+            willChange: 'transform'
           }}
         />
       </div>

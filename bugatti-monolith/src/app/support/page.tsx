@@ -51,7 +51,7 @@ export default function SupportPage() {
              {[
                { 
                  icon: <ShieldCheck size={32} />, 
-                 title: "Flying Doctors", 
+                 title: "Elite Technicians", 
                  desc: "Our master technicians are on standby 24/7, ready to be dispatched globally via private aviation to service your Chiron at your location."
                },
                { 

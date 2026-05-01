@@ -5,8 +5,19 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useStore } from '@/store/useStore';
 import { Cpu, ShieldCheck, Zap, Crosshair, ChevronRight } from 'lucide-react';
 
+const FrameCounter = () => {
+  const currentFrame = useStore(state => state.currentFrame);
+  return (
+    <span className="text-3xl font-light text-white tracking-tighter tabular-nums">
+      {currentFrame.toString().padStart(6, '0')}
+    </span>
+  );
+};
+
 export const TelemetryHUD: React.FC = () => {
-  const { currentFrame, activeSection, telemetry, setTelemetry } = useStore();
+  const activeSection = useStore(state => state.activeSection);
+  const telemetry = useStore(state => state.telemetry);
+  const setTelemetry = useStore(state => state.setTelemetry);
 
   useEffect(() => {
     const fetchTelemetry = async () => {
@@ -65,9 +76,7 @@ export const TelemetryHUD: React.FC = () => {
       <div className="absolute top-16 right-16 flex flex-col items-end gap-6">
         <div className="flex flex-col items-end">
           <span className="text-white/20 mb-1">FRAME_UUID</span>
-          <span className="text-3xl font-light text-white tracking-tighter tabular-nums">
-            {currentFrame.toString().padStart(6, '0')}
-          </span>
+          <FrameCounter />
         </div>
         <div className="flex items-center gap-3 glass px-4 py-2 border-white/5">
           <div className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />

@@ -10,31 +10,31 @@ import Link from 'next/link';
 const ENGINEERING_MODULES = [
   {
     icon: <Cpu size={24} />,
-    title: "W16 QUAD-TURBO",
+    title: "W16 QUAD TURBO",
     subtitle: "8.0L // 1500 PS // 1600 NM",
     description: "A mechanical monolith. Four high-performance turbochargers operate in two-stage controlled turbocharging, ensuring a linear power curve that feels like a jet takeoff.",
-    specs: ["TITANIUM_RODS", "CARBON_INLETS", "60K_LITERS_AIR", "1-12-5-8_FIRE"]
+    specs: ["TITANIUM RODS", "CARBON INLETS", "60K LITERS AIR", "1-12-5-8 FIRING"]
   },
   {
     icon: <Wind size={24} />,
-    title: "AERO_DYNAMICS",
-    subtitle: "ADAPTIVE_STABILIZATION",
+    title: "AERODYNAMICS",
+    subtitle: "ADAPTIVE STABILIZATION",
     description: "The rear wing is a hydraulic masterpiece, adjusting its profile in 0.8 seconds. In Top Speed mode, the car lowers its stance to minimize drag coefficients to 0.35.",
-    specs: ["HYDRAULIC_WING", "AIR_BRAKE", "VENTURI_TUNNEL", "0.35_CD"]
+    specs: ["HYDRAULIC WING", "AIR BRAKE", "VENTURI TUNNEL", "0.35 DRAG COEF"]
   },
   {
     icon: <ShieldCheck size={24} />,
-    title: "MONOCOQUE_S",
-    subtitle: "CARBON_FIBRE_CHASSIS",
+    title: "MONOCOQUE",
+    subtitle: "CARBON FIBRE CHASSIS",
     description: "Crafted over 4 weeks, the carbon monocoque is the stiffest road-car chassis in existence. Torsional rigidity matches LMP1 endurance racing standards.",
-    specs: ["50K_NM_DEGREE", "LMP1_SPEC", "H_MODULUS", "SAFETY_CELL"]
+    specs: ["50K NM DEGREE", "LMP1 SPEC", "HIGH MODULUS", "SAFETY CELL"]
   },
   {
     icon: <Zap size={24} />,
-    title: "THERMAL_CORE",
-    subtitle: "HIGH_CAPACITY_COOLING",
+    title: "THERMAL CORE",
+    subtitle: "HIGH CAPACITY COOLING",
     description: "800 liters of coolant per minute. 10 radiators. Three dedicated airflows for the front brakes. The thermal load of 1,500 HP requires aerospace-grade heat management.",
-    specs: ["10_RADIATORS", "800L_FLOW", "DUAL_CIRCUIT", "BRAKE_DUCTS"]
+    specs: ["10 RADIATORS", "800L FLOW", "DUAL CIRCUIT", "BRAKE DUCTS"]
   }
 ];
 
@@ -86,14 +86,14 @@ export default function EngineeringPage() {
                     onClick={() => setActive(active === i ? null : i)}
                     className="w-full flex items-center justify-between py-12 px-8 text-left transition-all duration-500 hover:bg-white/[0.02]"
                   >
-                    <div className="flex items-center gap-16">
-                      <span className="font-jetbrains text-xs text-white/10">SYSTEM_0{i+1}</span>
-                      <span className={`font-playfair italic text-3xl md:text-5xl transition-all duration-500 ${active === i ? 'text-white pl-8' : 'text-white/30'}`}>
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-12">
+                      <span className="font-jetbrains text-xs text-white/20 shrink-0">SYSTEM_0{i+1}</span>
+                      <span className={`font-playfair italic text-3xl md:text-5xl transition-all duration-500 ${active === i ? 'text-white sm:pl-8' : 'text-white/30'}`}>
                         {module.title}
                       </span>
                     </div>
-                    <motion.div animate={{ rotate: active === i ? 180 : 0 }}>
-                      <ChevronDown size={20} className="text-white/20" />
+                    <motion.div animate={{ rotate: active === i ? 180 : 0 }} className="shrink-0 ml-4">
+                      <ChevronDown size={24} className={active === i ? "text-blue-500" : "text-white/20"} />
                     </motion.div>
                   </button>
 
@@ -112,17 +112,17 @@ export default function EngineeringPage() {
                               {module.description}
                             </p>
                           </div>
-                          <div className="grid grid-cols-2 gap-6">
+                          <div className="flex flex-wrap gap-4 content-start">
                              {module.specs.map((spec, j) => (
                                <motion.div 
                                  key={j}
-                                 initial={{ opacity: 0, scale: 0.9 }}
-                                 animate={{ opacity: 1, scale: 1 }}
+                                 initial={{ opacity: 0, y: 10 }}
+                                 animate={{ opacity: 1, y: 0 }}
                                  transition={{ delay: j * 0.1 }}
-                                 className="backdrop-blur-3xl bg-white/[0.03] border border-white/5 p-6 flex flex-col gap-3 group/spec"
+                                 className="backdrop-blur-3xl bg-white/[0.02] border border-white/10 rounded-full px-6 py-3 flex items-center gap-3 hover:bg-blue-600/10 hover:border-blue-500/30 transition-colors"
                                >
-                                  <div className="w-6 h-[1px] bg-blue-600 group-hover/spec:w-full transition-all duration-500" />
-                                  <span className="font-jetbrains text-[8px] text-white/60 tracking-widest uppercase">{spec}</span>
+                                  <div className="w-1.5 h-1.5 rounded-full bg-blue-600" />
+                                  <span className="font-jetbrains text-[9px] font-bold text-white/80 tracking-widest uppercase">{spec}</span>
                                </motion.div>
                              ))}
                           </div>
