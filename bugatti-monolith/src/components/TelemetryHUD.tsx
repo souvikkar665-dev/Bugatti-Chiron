@@ -11,7 +11,8 @@ export const TelemetryHUD: React.FC = () => {
   useEffect(() => {
     const fetchTelemetry = async () => {
       try {
-        const res = await fetch('http://localhost:8001/telemetry');
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001';
+        const res = await fetch(`${apiUrl}/telemetry`);
         const data = await res.json();
         setTelemetry(data);
       } catch (err) {
